@@ -152,6 +152,53 @@ try:
 except Exception as e:
     st.error(f"Error fetching FX data: {e}")
 
+st.markdown("---")
+st.subheader("Cross-Asset Correlation Matrix")
+
+try:
+    with st.spinner("Fetching data for correlation matrix..."):
+        corr_tickers = ['^GSPC', 'DX-Y.NYB', 'GC=F', 'CL=F', 'EURUSD=X', 'JPY=X']
+        ticker_map = {
+            '^GSPC': 'S&P 500',
+            'DX-Y.NYB': 'DXY',
+            'GC=F': 'Gold',
+            'CL=F': 'Crude Oil',
+            'EURUSD=X': 'EUR/USD',
+            'JPY=X': 'USD/JPY'
+        }
+        
+        corr_data = yf.download(corr_tickers, period="3mo")
+        
+        if not corr_data.empty:
+            if isinstance(corr_data.columns, pd.MultiIndex):
+                if 'Close' in corr_data.columns.levels[0]:
+                    close_data = corr_data['Close'].copy()
+                else:
+                    close_data = corr_data.copy()
+            else:
+                close_data = corr_data.copy()
+                
+            close_data = close_data.rename(columns=ticker_map)
+            
+            # Keep only the columns we actually care about
+            valid_cols = [col for col in close_data.columns if col in ticker_map.values()]
+            close_data = close_data[valid_cols]
+            
+            # Calculate daily percentage returns and Pearson correlation
+            daily_returns = close_data.pct_change().dropna()
+            corr_matrix = daily_returns.corr(method='pearson')
+            
+            # Apply background gradient styling
+            styled_corr = corr_matrix.style.background_gradient(cmap='coolwarm', axis=None).format("{:.2f}")
+            
+            st.dataframe(styled_corr)
+            st.caption("3-Month Daily Returns Pearson Correlation. Values closer to 1 indicate strong positive correlation, while values closer to -1 indicate strong negative correlation.")
+        else:
+            st.warning("Could not fetch data for correlation matrix.")
+            
+except Exception as e:
+    st.error(f"Error calculating correlation matrix: {e}")
+
 fred_api_key = os.getenv("FRED_API_KEY")
 fred = None
 if fred_api_key:

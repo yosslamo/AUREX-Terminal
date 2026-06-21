@@ -4,3 +4,4 @@ pandas
 python-dotenv
 fredapi
 google-generativeai
+matplotlib

@@ -258,6 +258,71 @@ with tab2:
     except Exception as e:
         st.error(f"Error calculating correlation matrix: {e}")
 
+    st.markdown("---")
+    st.subheader("Automated Support & Resistance (20-Day Rolling)")
+
+    try:
+        with st.spinner("Calculating Support & Resistance..."):
+            sr_tickers = ['EURUSD=X', 'GBPUSD=X', 'GC=F', 'CL=F']
+            sr_map = {
+                'EURUSD=X': 'EUR/USD',
+                'GBPUSD=X': 'GBP/USD',
+                'GC=F': 'Gold',
+                'CL=F': 'Crude Oil'
+            }
+            
+            sr_data = yf.download(sr_tickers, period="3mo")
+            
+            if not sr_data.empty:
+                sr_results = []
+                for ticker in sr_tickers:
+                    if isinstance(sr_data.columns, pd.MultiIndex):
+                        try:
+                            high_series = sr_data['High'][ticker].dropna()
+                            low_series = sr_data['Low'][ticker].dropna()
+                            close_series = sr_data['Close'][ticker].dropna()
+                        except KeyError:
+                            continue
+                    else:
+                        continue
+                    
+                    if not close_series.empty and len(close_series) >= 20:
+                        current_price = close_series.iloc[-1]
+                        
+                        rolling_res = high_series.rolling(window=20).max()
+                        nearest_res = rolling_res.dropna().iloc[-1]
+                        
+                        rolling_sup = low_series.rolling(window=20).min()
+                        nearest_sup = rolling_sup.dropna().iloc[-1]
+                        
+                        sr_results.append({
+                            "Asset": sr_map.get(ticker, ticker),
+                            "Current Price": current_price,
+                            "Nearest Support": nearest_sup,
+                            "Nearest Resistance": nearest_res
+                        })
+                
+                if sr_results:
+                    sr_df = pd.DataFrame(sr_results)
+                    st.dataframe(
+                        sr_df,
+                        column_config={
+                            "Asset": st.column_config.TextColumn("Asset"),
+                            "Current Price": st.column_config.NumberColumn("Current Price", format="%.4f"),
+                            "Nearest Support": st.column_config.NumberColumn("Nearest Support", format="%.4f"),
+                            "Nearest Resistance": st.column_config.NumberColumn("Nearest Resistance", format="%.4f"),
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
+                else:
+                    st.warning("Could not calculate Support & Resistance (insufficient data).")
+            else:
+                st.warning("Could not fetch data for Support & Resistance.")
+                
+    except Exception as e:
+        st.error(f"Error calculating Support & Resistance: {e}")
+
 with tab3:
     st.subheader("Smart Money Positioning (COT Report)")
 

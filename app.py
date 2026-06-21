@@ -70,6 +70,40 @@ def fetch_data(tickers_dict):
     return pd.DataFrame(data)
 
 with tab1:
+    st.markdown("---")
+    st.subheader("Latest Market Catalysts & News")
+    try:
+        with st.spinner("Fetching news..."):
+            news_spy = yf.Ticker('SPY').news
+            news_dxy = yf.Ticker('DX-Y.NYB').news
+            
+            all_news = []
+            for item in (news_spy + news_dxy):
+                content = item.get('content', {})
+                if content:
+                    title = content.get('title')
+                    pubDate = content.get('pubDate', '')
+                    provider = content.get('provider', {}).get('displayName', 'Unknown')
+                    url = content.get('clickThroughUrl', {}).get('url', '')
+                    if title and url:
+                        all_news.append({
+                            'title': title,
+                            'publisher': provider,
+                            'link': url,
+                            'pubDate': pubDate
+                        })
+            
+            all_news = sorted(all_news, key=lambda x: x['pubDate'], reverse=True)[:5]
+            
+            if all_news:
+                for article in all_news:
+                    st.markdown(f"- **[{article['title']}]({article['link']})** ({article['publisher']})")
+            else:
+                st.info("No recent news found.")
+                
+    except Exception as e:
+        st.error(f"Error fetching news: {e}")
+
     with st.spinner("Fetching data..."):
         df = fetch_data(tickers)
         if not df.empty:

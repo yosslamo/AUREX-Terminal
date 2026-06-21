@@ -115,6 +115,43 @@ if not risk_df.empty:
             else:
                 st.metric(label=row["Asset"], value="Data Unavailable")
 
+st.markdown("---")
+st.subheader("FX Strength Meter (1-Week Relative to USD)")
+
+try:
+    fx_tickers = ['EURUSD=X', 'GBPUSD=X', 'AUDUSD=X', 'JPY=X', 'CAD=X', 'CHF=X']
+    inverse_tickers = ['JPY=X', 'CAD=X', 'CHF=X']
+    
+    with st.spinner("Fetching FX data..."):
+        fx_data = {}
+        for ticker in fx_tickers:
+            t = yf.Ticker(ticker)
+            hist = t.history(period="5d")
+            if not hist.empty and len(hist) >= 2:
+                first_close = hist['Close'].iloc[0]
+                last_close = hist['Close'].iloc[-1]
+                pct_change = ((last_close - first_close) / first_close) * 100
+                
+                # Invert logic for USD base currencies
+                if ticker in inverse_tickers:
+                    pct_change = pct_change * -1
+                
+                # Clean up the ticker name for display
+                display_name = ticker.replace('=X', '').replace('USD', '')
+                fx_data[display_name] = pct_change
+                
+        if fx_data:
+            fx_df = pd.DataFrame(list(fx_data.items()), columns=["Currency", "1W % Change"])
+            fx_df.set_index("Currency", inplace=True)
+            
+            st.bar_chart(fx_df)
+            st.caption("Positive values indicate the currency strengthened against the USD over the last 5 days. Negative values indicate weakening.")
+        else:
+            st.warning("Could not fetch FX data.")
+            
+except Exception as e:
+    st.error(f"Error fetching FX data: {e}")
+
 fred_api_key = os.getenv("FRED_API_KEY")
 fred = None
 if fred_api_key:
